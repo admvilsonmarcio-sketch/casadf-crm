@@ -1,14 +1,17 @@
-import { pgTable, serial, text, integer, boolean, timestamp, jsonb, numeric, varchar, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, numeric, varchar, date, pgEnum } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-// --- AUTENTICAÇÃO & EQUIPE ---
+export const contractStatus = pgEnum("contract_status", ["ativo", "encerrado", "pendente"]);
+export const userRole = pgEnum("user_role", ["admin", "corretor", "cliente", "guest"]);
+
+// --- AUTENTICAÇÃO & EQUIPE (CORRIGIDO) ---
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   salt: text("salt").notNull(),
-  role: varchar("role", { length: 20 }).default("cliente"), // 'admin', 'corretor', 'cliente'
+  role: userRole("role").default("cliente"),
   avatar: text("avatar"),
   phone: text("phone"),
   resetToken: text("reset_token"),
@@ -17,7 +20,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// --- IMOBILIÁRIA ---
+// --- IMOBILIÁRIA & CONTEÚDO (MANTIDO) ---
 export const owners = pgTable("owners", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -69,7 +72,6 @@ export const propertyImages = pgTable("property_images", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// --- BLOG ---
 export const blogCategories = pgTable("blog_categories", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -94,7 +96,6 @@ export const blogPosts = pgTable("blog_posts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// --- REVIEWS & SOCIAL ---
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
   title: text("title"),
