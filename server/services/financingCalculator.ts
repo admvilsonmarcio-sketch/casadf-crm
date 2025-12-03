@@ -1,88 +1,53 @@
-import { db } from "../db";
+import { db } from "../db"; 
 import { bankRates } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-export interface SimulationResult {
-  bankName: string;
-  appliedRate: number;
-  loanAmount: number;
-  months: number;
-  price: {
-    firstInstallment: number;
-    totalInterest: number;
-    grandTotal: number;
-  };
-  sac: {
-    firstInstallment: number;
-    lastInstallment: number;
-    totalInterest: number;
-    grandTotal: number;
-  };
-  minIncomeRequired: number;
+export interface SimulationInput {
+  propertyValue: number;
+  downPayment: number;
+  years: number;
+  bankId?: number; // Opcional, se não vier pega a média
 }
 
-export const simulateFinancing = async (
-  propertyValue: number,
-  downPayment: number,
-  years: number,
-  bankId: number
-): Promise<SimulationResult> => {
-  // 1. Busca a taxa do banco no banco de dados (Postgres)
-  const rateRecord = await db
-    .select()
-    .from(bankRates)
-    .where(eq(bankRates.id, bankId))
-    .limit(1);
-
-  if (!rateRecord.length) {
-    throw new Error("Banco não encontrado ou taxa não cadastrada.");
+export const simulate = async (input: SimulationInput) => {
+  // Busca taxa real no banco ou usa default SELIC based
+  let rate = 11.25; // Default safe
+  
+  if (input.bankId) {
+    const bank = await db.query.bankRates.findFirst({
+      where: eq(bankRates.id, input.bankId)
+    });
+    if (bank) rate = Number(bank.interestRate);
   }
 
-  const bank = rateRecord[0];
-  const annualRate = Number(bank.annualInterestRate);
-  
-  // 2. Variáveis base
-  const loanAmount = propertyValue - downPayment;
-  const months = years * 12;
-  const monthlyRate = annualRate / 12 / 100; // Taxa mensal decimal
+  const loanAmount = input.propertyValue - input.downPayment;
+  const months = input.years * 12;
+  const monthlyRate = (rate / 100) / 12;
 
-  // 3. CÁLCULO PRICE (Parcela Fixa)
-  const pricePmt = loanAmount * (
-    (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
-    (Math.pow(1 + monthlyRate, months) - 1)
-  );
-  
-  const priceTotalPayment = pricePmt * months;
-  const priceTotalInterest = priceTotalPayment - loanAmount;
+  // Cálculo SAC (Primeira parcela)
+  const amortizacao = loanAmount / months;
+  const jurosSAC = loanAmount * monthlyRate;
+  const firstInstallmentSAC = amortizacao + jurosSAC;
 
-  // 4. CÁLCULO SAC (Amortização Constante)
-  const amortization = loanAmount / months;
-  const sacFirstInterest = loanAmount * monthlyRate;
-  const sacFirstPmt = amortization + sacFirstInterest;
-  const sacLastPmt = amortization + (amortization * monthlyRate);
-  
-  const sacTotalPayment = (months / 2) * (sacFirstPmt + sacLastPmt);
-  const sacTotalInterest = sacTotalPayment - loanAmount;
-
-  // 5. Regra de Renda Mínima (30%)
-  const minIncome = sacFirstPmt / 0.30;
+  // Cálculo PRICE (Parcela Fixa)
+  const factor = Math.pow(1 + monthlyRate, months);
+  const installmentPrice = loanAmount * (monthlyRate * factor) / (factor - 1);
 
   return {
-    bankName: bank.bankName,
-    appliedRate: annualRate,
-    loanAmount,
-    months,
-    price: {
-      firstInstallment: Number(pricePmt.toFixed(2)),
-      totalInterest: Number(priceTotalInterest.toFixed(2)),
-      grandTotal: Number(priceTotalPayment.toFixed(2))
+    system: {
+      sac: {
+        firstInstallment: firstInstallmentSAC,
+        lastInstallment: amortizacao + (amortizacao * monthlyRate), // Simplificado
+        totalInterest: (jurosSAC * months) / 2 // Aproximação linear
+      },
+      price: {
+        installment: installmentPrice,
+        totalPaid: installmentPrice * months
+      }
     },
-    sac: {
-      firstInstallment: Number(sacFirstPmt.toFixed(2)),
-      lastInstallment: Number(sacLastPmt.toFixed(2)),
-      totalInterest: Number(sacTotalInterest.toFixed(2)),
-      grandTotal: Number(sacTotalPayment.toFixed(2))
-    },
-    minIncomeRequired: Number(minIncome.toFixed(2))
+    meta: {
+      appliedRate: rate,
+      bank: input.bankId ? "Taxa Específica" : "Taxa de Mercado"
+    }
   };
 };
