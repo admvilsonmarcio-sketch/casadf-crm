@@ -1,34 +1,44 @@
 version: '3.8'
 
 services:
+  # Banco de Dados
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aplicação
   app:
     build: .
+    restart: always
     ports:
       - "5000:5000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/imobiliaria_crm
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - PORT=5000
       - NODE_ENV=production
     depends_on:
-      - postgres
+      db:
+        condition: service_healthy
     networks:
       - app-network
-
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: imobiliaria_crm
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432" # Exposto para conectar o N8N externo
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
+    command: sh -c "npm run db:migrate && npm run start"
 
 volumes:
   postgres_data:
+
+networks:
+  app-network:
+    external: true
