@@ -1,10 +1,7 @@
 import { pgTable, serial, text, integer, timestamp, boolean, jsonb, numeric, varchar, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-// ============================================
-// 1. NÚCLEO IMOBILIÁRIO & FINTECH
-// ============================================
-
+// --- IMOBILIÁRIA ---
 export const properties = pgTable("properties", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
@@ -12,66 +9,53 @@ export const properties = pgTable("properties", {
   price: numeric("price", { precision: 12, scale: 2 }).notNull(),
   type: varchar("type", { length: 50 }).notNull(),
   status: varchar("status", { length: 50 }).notNull(),
+  transactionType: varchar("transaction_type", { length: 50 }).default("venda"),
   address: text("address"),
-  ownerId: integer("owner_id"),
-  features: jsonb("features"), // Adicionado para suportar lista de caracteristicas
+  neighborhood: text("neighborhood"),
+  city: text("city"),
+  state: varchar("state", { length: 2 }),
+  zipCode: varchar("zip_code", { length: 20 }),
   bedrooms: integer("bedrooms"),
   bathrooms: integer("bathrooms"),
   parkingSpaces: integer("parking_spaces"),
   totalArea: numeric("total_area"),
+  mainImage: text("main_image"),
+  images: jsonb("images"),
+  featured: boolean("featured").default(false),
+  referenceCode: text("reference_code"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const propertyImages = pgTable("property_images", {
   id: serial("id").primaryKey(),
   propertyId: integer("property_id").references(() => properties.id).notNull(),
-  url: text("url").notNull(),
-  order: integer("order").default(0),
+  imageUrl: text("image_url").notNull(),
+  isPrimary: integer("is_primary").default(0),
+  displayOrder: integer("display_order").default(0),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const bankRates = pgTable("bank_rates", {
-  id: serial("id").primaryKey(),
-  bankName: text("bank_name").notNull(),
-  interestRate: numeric("interest_rate", { precision: 5, scale: 2 }).notNull(),
-  maxYears: integer("max_years").notNull(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const contracts = pgTable("contracts", {
-  id: serial("id").primaryKey(),
-  propertyId: integer("property_id").references(() => properties.id),
-  tenantId: integer("tenant_id"),
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date").notNull(),
-  rentValue: numeric("rent_value", { precision: 12, scale: 2 }).notNull(),
-  active: boolean("active").default(true),
-});
-
-export const financialMovements = pgTable("financial_movements", {
-  id: serial("id").primaryKey(),
-  contractId: integer("contract_id").references(() => contracts.id),
-  type: varchar("type", { length: 20 }).notNull(), // receita, despesa
-  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-  dueDate: date("due_date").notNull(),
-  paidAt: timestamp("paid_at"),
-});
-
-// ============================================
-// 2. CRM & ADMINISTRAÇÃO
-// ============================================
-
+// --- CRM ---
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  phone: text("phone").unique().notNull(),
+  phone: text("phone"),
   email: text("email"),
-  source: text("source"), // Adicionado para rastreamento
+  whatsapp: text("whatsapp"),
+  source: text("source"),
+  clientType: varchar("client_type", { length: 50 }),
+  qualification: varchar("qualification", { length: 50 }).default("nao_qualificado"),
+  stage: varchar("stage", { length: 50 }).default("novo"),
   interestProfile: jsonb("interest_profile"),
-  pipelineStage: varchar("pipeline_stage", { length: 50 }).default("novo"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// --- BLOG & CONTEÚDO (NOVO) ---
+export const blogCategories = pgTable("blog_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").unique().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const blogPosts = pgTable("blog_posts", {
@@ -81,75 +65,62 @@ export const blogPosts = pgTable("blog_posts", {
   content: text("content").notNull(),
   excerpt: text("excerpt"),
   featuredImage: text("featured_image"),
+  categoryId: integer("category_id").references(() => blogCategories.id),
   published: boolean("published").default(false),
   views: integer("views").default(0),
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const analyticsEvents = pgTable("analytics_events", {
+export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
-  eventType: varchar("event_type", { length: 50 }).notNull(), // page_view, click, lead
-  source: varchar("source", { length: 50 }), // google, facebook, direct
-  metadata: jsonb("metadata"),
+  clientName: text("client_name").notNull(),
+  clientRole: text("client_role"),
+  clientPhoto: text("client_photo"),
+  rating: integer("rating").default(5),
+  content: text("content"),
+  active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// --- FINTECH & ANALYTICS ---
+export const bankRates = pgTable("bank_rates", {
+  id: serial("id").primaryKey(),
+  bankName: text("bank_name").notNull(),
+  interestRate: numeric("interest_rate", { precision: 5, scale: 2 }).notNull(),
+  maxYears: integer("max_years").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const campaignSources = pgTable("campaign_sources", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   source: text("source").notNull(),
-  medium: text("medium"),
-  budget: numeric("budget", { precision: 10, scale: 2 }),
   conversions: integer("conversions").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
 });
 
-// ============================================
-// 3. INFRAESTRUTURA DE AGENTES N8N
-// ============================================
-
+// --- N8N INTEGRAÇÃO ---
 export const n8nFilaMensagens = pgTable("n8n_fila_mensagens", {
   id: serial("id").primaryKey(),
   sessionId: text("session_id").notNull(),
   mensagem: text("mensagem").notNull(),
-  idMensagem: text("id_mensagem").unique(),
-  timestamp: timestamp("timestamp").defaultNow(),
   processado: boolean("processado").default(false),
-});
-
-export const n8nStatusAtendimento = pgTable("n8n_status_atendimento", {
-  sessionId: text("session_id").primaryKey(),
-  status: text("status").notNull(),
-  ultimoContexto: jsonb("ultimo_contexto"),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  timestamp: timestamp("timestamp").defaultNow(),
 });
 
 export const n8nChatHistories = pgTable("n8n_chat_histories", {
   id: serial("id").primaryKey(),
   sessionId: text("session_id").notNull(),
-  message: jsonb("message").notNull(),
+  role: text("role").default("user"),
+  message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// ============================================
-// RELACIONAMENTOS
-// ============================================
-
+// --- RELATIONS ---
 export const propertiesRelations = relations(properties, ({ many }) => ({
-  contracts: many(contracts),
   images: many(propertyImages),
 }));
 
 export const propertyImagesRelations = relations(propertyImages, ({ one }) => ({
   property: one(properties, { fields: [propertyImages.propertyId], references: [properties.id] }),
-}));
-
-export const contractsRelations = relations(contracts, ({ one, many }) => ({
-  property: one(properties, { fields: [contracts.propertyId], references: [properties.id] }),
-  movements: many(financialMovements),
-}));
-
-export const movementsRelations = relations(financialMovements, ({ one }) => ({
-  contract: one(contracts, { fields: [financialMovements.contractId], references: [contracts.id] }),
 }));
