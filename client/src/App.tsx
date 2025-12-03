@@ -26,6 +26,8 @@ import Analytics from "./pages/admin/Analytics";
 import Contact from "./pages/Contact";
 import UsersAdmin from "./pages/admin/Users";
 import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
 
 function Router() {
   return (
@@ -39,6 +41,8 @@ function Router() {
       <Route path="/quem-somos" component={About} />
       <Route path="/contato" component={Contact} />
       <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/forgot-password" component={ForgotPassword} />
       
       {/* Admin routes */}
       <Route path="/admin/analytics">
