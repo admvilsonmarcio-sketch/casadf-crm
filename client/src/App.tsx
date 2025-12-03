@@ -25,18 +25,20 @@ import FollowUp from "./pages/admin/FollowUp";
 import Analytics from "./pages/admin/Analytics";
 import Contact from "./pages/Contact";
 import UsersAdmin from "./pages/admin/Users";
+import Login from "./pages/auth/Login";
 
 function Router() {
   return (
     <Switch>
       {/* Public routes */}
-      <Route path={"/"} component={Home} />
+      <Route path={"\"} component={Home} />
       <Route path="/imoveis" component={Properties} />
       <Route path="/imovel/:id" component={PropertyDetailPage} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/quem-somos" component={About} />
       <Route path="/contato" component={Contact} />
+      <Route path="/login" component={Login} />
       
       {/* Admin routes */}
       <Route path="/admin/analytics">

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "./_core/trpc";
+import { authRouter } from "./routers/auth";
 import { db } from "./db";
 import { 
   properties, leads, blogPosts, blogCategories, reviews,
@@ -9,6 +10,7 @@ import {
 import { eq, desc, and } from "drizzle-orm";
 
 export const appRouter = router({
+  auth: authRouter,
   // --- USERS (EQUIPE) ---
   users: router({
     list: publicProcedure.query(async () => {
