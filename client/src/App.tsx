@@ -32,112 +32,63 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 function Router() {
   return (
     <Switch>
-      {/* Public routes */}
-      <Route path={"\"} component={Home} />
+      {/* AUTH & PUBLIC ROUTES */}
+      <Route path="/" component={Home} />
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      
       <Route path="/imoveis" component={Properties} />
       <Route path="/imovel/:id" component={PropertyDetailPage} />
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/quem-somos" component={About} />
       <Route path="/contato" component={Contact} />
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      <Route path="/forgot-password" component={ForgotPassword} />
-      
-      {/* Admin routes */}
-      <Route path="/admin/analytics">
-        {() => (
-          <AdminLayout>
-            <Analytics />
-          </AdminLayout>
-        )}
-      </Route>
+
+      {/* ADMIN ROUTES */}
       <Route path="/admin">
-        {() => (
-          <AdminLayout>
-            <Dashboard />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><Dashboard /></AdminLayout>}
       </Route>
-      <Route path="/admin/users">
-        {() => <UsersAdmin />}
+      <Route path="/admin/analytics">
+        {() => <AdminLayout><Analytics /></AdminLayout>}
       </Route>
       <Route path="/admin/properties">
-        {() => (
-          <AdminLayout>
-            <PropertiesAdmin />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><PropertiesAdmin /></AdminLayout>}
       </Route>
       <Route path="/admin/properties/new">
-        {() => (
-          <AdminLayout>
-            <PropertyNew />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><PropertyNew /></AdminLayout>}
       </Route>
       <Route path="/admin/properties/:id">
-        {(params) => <PropertyEdit />}
+        {() => <AdminLayout><PropertyEdit /></AdminLayout>}
       </Route>
       <Route path="/admin/leads">
-        {() => (
-          <AdminLayout>
-            <LeadsAdmin />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><LeadsAdmin /></AdminLayout>}
       </Route>
       <Route path="/admin/leads/new">
-        {() => (
-          <AdminLayout>
-            <LeadEdit />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><LeadEdit /></AdminLayout>}
       </Route>
       <Route path="/admin/leads/edit/:id">
-        {() => (
-          <AdminLayout>
-            <LeadEdit />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><LeadEdit /></AdminLayout>}
+      </Route>
+      <Route path="/admin/users">
+        {() => <AdminLayout><UsersAdmin /></AdminLayout>}
       </Route>
       <Route path="/admin/clients">
-        {() => (
-          <AdminLayout>
-            <ClientManagement />
-          </AdminLayout>
-        )}
-      </Route>
-      <Route path="/admin/blog">
-        {() => (
-          <AdminLayout>
-            <BlogPosts />
-          </AdminLayout>
-        )}
-      </Route>
-      <Route path="/admin/blog/new">
-        {() => (
-          <AdminLayout>
-            <BlogPostEdit />
-          </AdminLayout>
-        )}
-      </Route>
-      <Route path="/admin/blog/:id/edit">
-        {() => (
-          <AdminLayout>
-            <BlogPostEdit />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><ClientManagement /></AdminLayout>}
       </Route>
       <Route path="/admin/followup">
-        {() => (
-          <AdminLayout>
-            <FollowUp />
-          </AdminLayout>
-        )}
+        {() => <AdminLayout><FollowUp /></AdminLayout>}
       </Route>
-      
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      <Route path="/admin/blog">
+        {() => <AdminLayout><BlogPosts /></AdminLayout>}
+      </Route>
+      <Route path="/admin/blog/new">
+        {() => <AdminLayout><BlogPostEdit /></AdminLayout>}
+      </Route>
+      <Route path="/admin/blog/:id/edit">
+        {() => <AdminLayout><BlogPostEdit /></AdminLayout>}
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
