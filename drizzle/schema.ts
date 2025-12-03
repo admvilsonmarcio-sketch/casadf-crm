@@ -42,15 +42,32 @@ export const leads = pgTable("leads", {
   phone: text("phone"),
   email: text("email"),
   whatsapp: text("whatsapp"),
-  source: text("source"),
-  clientType: varchar("client_type", { length: 50 }),
+  source: text("source").default("site"),
+  
+  // Classificação
+  clientType: varchar("client_type", { length: 50 }).default("comprador"),
   qualification: varchar("qualification", { length: 50 }).default("nao_qualificado"),
   stage: varchar("stage", { length: 50 }).default("novo"),
+  urgencyLevel: varchar("urgency_level", { length: 50 }).default("media"),
+  
+  // Preferências (Colunas reais para filtros funcionarem)
+  budgetMin: numeric("budget_min", { precision: 12, scale: 2 }),
+  budgetMax: numeric("budget_max", { precision: 12, scale: 2 }),
+  preferredNeighborhoods: text("preferred_neighborhoods"),
+  preferredPropertyTypes: text("preferred_property_types"),
+  
+  // Contexto de Captura
+  interestedPropertyId: integer("interested_property_id"),
+  notes: text("notes"),
+  
+  // Dados Brutos da IA
   interestProfile: jsonb("interest_profile"),
+  
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// --- BLOG & CONTEÚDO (NOVO) ---
+// --- BLOG & CONTEÚDO ---
 export const blogCategories = pgTable("blog_categories", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),

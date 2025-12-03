@@ -23,6 +23,7 @@ import LeadEdit from "./pages/admin/LeadEdit";
 import ClientManagement from "./pages/admin/ClientManagement";
 import FollowUp from "./pages/admin/FollowUp";
 import Analytics from "./pages/admin/Analytics";
+import Contact from "./pages/Contact";
 
 function Router() {
   return (
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/quem-somos" component={About} />
+      <Route path="/contato" component={Contact} />
       
       {/* Admin routes */}
       <Route path="/admin/analytics">
@@ -75,7 +77,18 @@ function Router() {
         )}
       </Route>
       <Route path="/admin/leads/new">
-        {() => <LeadEdit />}
+        {() => (
+          <AdminLayout>
+            <LeadEdit />
+          </AdminLayout>
+        )}
+      </Route>
+      <Route path="/admin/leads/edit/:id">
+        {() => (
+          <AdminLayout>
+            <LeadEdit />
+          </AdminLayout>
+        )}
       </Route>
       <Route path="/imovel/:id">
         {(params) => <PropertyDetailPage />}
