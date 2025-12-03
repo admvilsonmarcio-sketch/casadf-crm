@@ -4,11 +4,41 @@ import { db } from "./db";
 import { 
   properties, leads, blogPosts, blogCategories, reviews,
   analyticsEvents, campaignSources, financialMovements, propertyImages,
-  n8nChatHistories, owners
+  n8nChatHistories, owners, users
 } from "../drizzle/schema";
 import { eq, desc, and } from "drizzle-orm";
 
 export const appRouter = router({
+  // --- USERS (EQUIPE) ---
+  users: router({
+    list: publicProcedure.query(async () => {
+      return await db.select().from(users).orderBy(desc(users.createdAt));
+    }),
+    create: publicProcedure.input(z.any()).mutation(async ({ input }) => {
+      const [newUser] = await db.insert(users).values(input).returning();
+      return newUser;
+    }),
+    delete: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.delete(users).where(eq(users.id, input.id));
+      return { success: true };
+    })
+  }),
+
+  // --- OWNERS (PROPRIETÁRIOS) ---
+  owners: router({
+    list: publicProcedure.query(async () => {
+      return await db.select().from(owners).orderBy(desc(owners.createdAt));
+    }),
+    create: publicProcedure.input(z.any()).mutation(async ({ input }) => {
+      const [newOwner] = await db.insert(owners).values(input).returning();
+      return newOwner;
+    }),
+    delete: publicProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await db.delete(owners).where(eq(owners.id, input.id));
+      return { success: true };
+    })
+  }),
+
   // --- IMÓVEIS ---
   properties: router({
     list: publicProcedure.query(async () => {
@@ -149,7 +179,7 @@ export const appRouter = router({
 
   // --- ANALYTICS ---
   analytics: router({
-    getMetrics: publicProcedure.query(async () => ({ 
+    getMetrics: publicProcedure.input(z.any()).query(async () => ({ 
         totalEvents: 0, 
         eventsByType: { page_view: 0, property_view: 0, contact_form: 0, whatsapp_click: 0 },
         eventsBySource: { google: 0, direct: 0 }
@@ -181,7 +211,9 @@ export const appRouter = router({
 
   // --- AUTH ---
   auth: router({
-    me: publicProcedure.query(async () => ({ id: 1, name: "Admin", email: "admin@casadf.com", role: "admin" })),
+    me: publicProcedure.query(async () => {
+      return { id: 1, name: "Admin", email: "admin@casadf.com", role: "admin" };
+    }),
     logout: publicProcedure.mutation(async () => ({ success: true }))
   })
 });

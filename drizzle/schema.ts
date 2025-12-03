@@ -1,12 +1,26 @@
 import { pgTable, serial, text, integer, boolean, timestamp, jsonb, numeric, varchar, date } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
+// --- AUTENTICAÇÃO & EQUIPE ---
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  role: varchar("role", { length: 20 }).default("user"),
+  avatar: text("avatar"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // --- IMOBILIÁRIA ---
 export const owners = pgTable("owners", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
+  cpfCnpj: text("cpf_cnpj"),
+  notes: text("notes"),
+  active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

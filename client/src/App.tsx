@@ -24,6 +24,7 @@ import ClientManagement from "./pages/admin/ClientManagement";
 import FollowUp from "./pages/admin/FollowUp";
 import Analytics from "./pages/admin/Analytics";
 import Contact from "./pages/Contact";
+import UsersAdmin from "./pages/admin/Users";
 
 function Router() {
   return (
@@ -51,6 +52,9 @@ function Router() {
             <Dashboard />
           </AdminLayout>
         )}
+      </Route>
+      <Route path="/admin/users">
+        {() => <UsersAdmin />}
       </Route>
       <Route path="/admin/properties">
         {() => (
@@ -89,9 +93,6 @@ function Router() {
             <LeadEdit />
           </AdminLayout>
         )}
-      </Route>
-      <Route path="/imovel/:id">
-        {(params) => <PropertyDetailPage />}
       </Route>
       <Route path="/admin/clients">
         {() => (

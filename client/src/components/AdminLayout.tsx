@@ -13,6 +13,7 @@ import {
   Bot,
   Bell,
   BarChart3,
+  UserCircle,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -31,6 +32,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { name: "Imóveis", href: "/admin/properties", icon: Building2 },
     { name: "Leads", href: "/admin/leads", icon: Users },
     { name: "Gestão de Clientes", href: "/admin/clients", icon: Bot },
+    { name: "Equipe", href: "/admin/users", icon: UserCircle },
     { name: "Follow-up Automático", href: "/admin/followup", icon: Bell, badge: true },
     { name: "Blog", href: "/admin/blog", icon: FileText },
     { name: "Configurações", href: "/admin/settings", icon: Settings },
