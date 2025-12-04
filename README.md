@@ -61,11 +61,12 @@ Sistema completo de consultoria imobiliária de luxo em Brasília com CRM integr
 - **Node.js 22** - Runtime JavaScript
 - **Express 4** - Framework web
 - **tRPC 11** - Type-safe API com contratos end-to-end
-- **Drizzle ORM** - ORM TypeScript-first para MySQL
+- **Drizzle ORM** - ORM TypeScript-first
 - **Superjson** - Serialização avançada (Date, Map, Set)
 
 ### Banco de Dados
-- **MySQL 8** / **TiDB** - Banco de dados relacional
+- **PostgreSQL 16** - Banco de dados relacional
+- **Drizzle ORM** - ORM TypeScript-first
 - **Drizzle Kit** - Migrations e schema management
 
 ### Autenticação
@@ -136,7 +137,7 @@ corretordasmansoes/
 
 - Node.js 22+
 - pnpm 9+
-- MySQL 8+ (ou Docker)
+- PostgreSQL 16+ (ou Docker)
 
 ### Desenvolvimento Local
 
@@ -328,8 +329,8 @@ pnpm db:push
 ### Variáveis de Ambiente Principais
 
 ```env
-# Banco de Dados
-DATABASE_URL=mysql://user:pass@host:3306/db
+# Banco de Dados PostgreSQL
+DATABASE_URL=postgresql://user:pass@host:5432/db
 
 # Autenticação
 JWT_SECRET=your-secret-key

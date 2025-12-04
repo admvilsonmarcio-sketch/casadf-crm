@@ -1,19 +1,18 @@
 # Variáveis de Ambiente
 
-Este documento lista todas as variáveis de ambiente necessárias para o projeto **Corretor das Mansões**.
+Este documento lista todas as variáveis de ambiente necessárias para o projeto **CasaDF CRM**.
 
 ## 📋 Variáveis Obrigatórias
 
-### Banco de Dados
+### Banco de Dados PostgreSQL
 
 | Variável | Descrição | Exemplo |
 |----------|-----------|---------|
-| `DATABASE_URL` | URL de conexão MySQL completa | `mysql://user:pass@host:3306/db` |
-| `MYSQL_ROOT_PASSWORD` | Senha do root MySQL (Docker) | `rootpassword` |
-| `MYSQL_DATABASE` | Nome do banco de dados | `corretordasmansoes` |
-| `MYSQL_USER` | Usuário do banco | `corretor` |
-| `MYSQL_PASSWORD` | Senha do usuário | `corretorpassword` |
-| `MYSQL_PORT` | Porta do MySQL | `3306` |
+| `DATABASE_URL` | URL de conexão PostgreSQL completa | `postgresql://user:pass@host:5432/db` |
+| `DB_USER` | Usuário do banco PostgreSQL | `casadf_admin` |
+| `DB_PASSWORD` | Senha do usuário PostgreSQL | `senhaSegura123` |
+| `DB_NAME` | Nome do banco de dados | `casadf_crm` |
+| `POSTGRES_PORT` | Porta do PostgreSQL | `5432` |
 
 ### Aplicação
 
@@ -74,11 +73,11 @@ Este documento lista todas as variáveis de ambiente necessárias para o projeto
 
 ## 📋 Variáveis Opcionais
 
-### phpMyAdmin (Desenvolvimento)
+### pgAdmin (Desenvolvimento)
 
 | Variável | Descrição | Padrão |
 |----------|-----------|--------|
-| `PHPMYADMIN_PORT` | Porta do phpMyAdmin | `8080` |
+| `PGADMIN_PORT` | Porta do pgAdmin | `8080` |
 
 ## 🔒 Segurança
 
