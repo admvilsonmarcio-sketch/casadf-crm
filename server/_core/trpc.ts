@@ -14,7 +14,6 @@ const t = initTRPC.context<Context>().create({
     return {
       ...shape,
       data: {
-        ...shape.data,
         zodError: error.cause instanceof ZodError ? error.cause.flatten() : null,
       },
     };
@@ -32,7 +31,7 @@ export const protectedProcedure = publicProcedure.use(async ({ ctx, next }) => {
     return next({ ctx: { ...ctx, user: ctx.user } });
 });
 
-// 2. Procedimento de Administrador (Requer role: admin/corretor)
+// 2. Procedimento de Administrador (Requer role: admin/corretor) - Fixes #2
 export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
     if (ctx.user.role !== 'admin' && ctx.user.role !== 'corretor') {
         throw new TRPCError({ code: 'FORBIDDEN', message: "Acesso restrito a administradores/corretores." });

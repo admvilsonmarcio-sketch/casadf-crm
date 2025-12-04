@@ -28,6 +28,7 @@ import UsersAdmin from "./pages/admin/Users";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
+import SimuladorFinanciamento from "./pages/SimuladorFinanciamento"; // NOVO
 
 function Router() {
   return (
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/quem-somos" component={About} />
       <Route path="/contato" component={Contact} />
+      <Route path="/simulador" component={SimuladorFinanciamento} /> {/* NOVO */}
 
       {/* ADMIN ROUTES */}
       <Route path="/admin">

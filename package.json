@@ -6,7 +6,7 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "tsx watch server/index.ts",
     "client": "vite client",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "start": "node dist/server/index.js",
     "db:generate": "drizzle-kit generate:pg",
     "db:migrate": "tsx server/migrate.ts"

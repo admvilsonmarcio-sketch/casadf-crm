@@ -2,15 +2,16 @@ import { z } from "zod";
 import { router, publicProcedure, adminProcedure, protectedProcedure } from "./_core/trpc";
 import { db } from "./db";
 import { authRouter } from "./routers/auth";
+import { simulate } from "./services/financingCalculator";
 import { 
   properties, leads, blogPosts, blogCategories, reviews,
   analyticsEvents, campaignSources, financialMovements, propertyImages,
-  n8nChatHistories, owners, users
+  n8nChatHistories, owners, users, bankRates
 } from "../drizzle/schema";
 import { eq, desc, and, lt } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-// Esquemas de validação (Zod)
+// Esquemas de validação (Zod) - CRÍTICO: Elimina z.any() em mutações
 const leadCreateSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email().optional().or(z.literal('')),
@@ -41,9 +42,22 @@ const propertyCreateSchema = z.object({
   featured: z.boolean().optional(),
 });
 
+// Schema para o novo simulador
+const simulationSchema = z.object({
+    propertyValue: z.number().min(1000, "Valor do imóvel inválido."),
+    downPayment: z.number().min(0),
+    years: z.number().min(5).max(35, "Prazo máximo de 35 anos"),
+    clientName: z.string().min(1),
+    clientEmail: z.string().email(),
+    clientPhone: z.string(),
+    bankId: z.number().optional(),
+});
+
+
 export const appRouter = router({
   auth: authRouter,
 
+  // Rotas CRUD que eram públicas AGORA usam adminProcedure - Fixes #2
   users: router({
     list: adminProcedure.query(async () => {
       return await db.select().from(users).orderBy(desc(users.createdAt));
@@ -71,18 +85,19 @@ export const appRouter = router({
     })
   }),
 
+  // --- IMÓVEIS (Usa esquema estrito) ---
   properties: router({
     list: publicProcedure.query(async () => {
       return await db.select().from(properties).orderBy(desc(properties.createdAt));
     }),
-    featured: publicProcedure.input(z.object({ limit: z.number().optional() })).query(async ({ input }) => {
-      return await db.select().from(properties).where(eq(properties.featured, true)).limit(input.limit || 6);
+    featured: publicProcedure.query(async () => {
+      return await db.select().from(properties).where(eq(properties.featured, true)).limit(6);
     }),
     getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       const result = await db.select().from(properties).where(eq(properties.id, input.id));
       return result[0];
     }),
-    create: adminProcedure.input(propertyCreateSchema).mutation(async ({ input }) => {
+    create: adminProcedure.input(propertyCreateSchema).mutation(async ({ input }) => { // USANDO SCHEMA
       const [newProp] = await db.insert(properties).values({
         ...input,
         price: (input.salePrice || input.rentPrice || 0).toString(),
@@ -121,12 +136,12 @@ export const appRouter = router({
     })
   }),
 
+  // --- LEADS (Usa esquema estrito) ---
   leads: router({
     list: adminProcedure.query(async () => {
       return await db.select().from(leads).orderBy(desc(leads.createdAt));
     }),
-    // Endpoint público para formulários do site
-    create: publicProcedure.input(leadCreateSchema).mutation(async ({ input }) => {
+    create: publicProcedure.input(leadCreateSchema).mutation(async ({ input }) => { // USANDO SCHEMA
       const [lead] = await db.insert(leads).values({
         ...input,
         budgetMin: input.budgetMin ? String(input.budgetMin) : null,
@@ -147,7 +162,6 @@ export const appRouter = router({
       const res = await db.select().from(leads).where(eq(leads.id, input.id));
       return res[0];
     }),
-    // Implementação funcional de Follow-up
     getInactiveHotLeads: adminProcedure.query(async () => {
       const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
       const hotLeads = await db.select()
@@ -170,6 +184,50 @@ export const appRouter = router({
     }),
   }),
 
+  // --- MÓDULO FINANCEIRO (Adiciona Simulador) ---
+  financial: router({
+    getSummary: publicProcedure.query(async () => ({ totalRevenue: 0, totalCommissions: 0, pendingCommissions: 0, netProfit: 0 })),
+    
+    // Rota para o novo simulador
+    simulate: publicProcedure.input(simulationSchema).mutation(async ({ input }) => {
+        const bankRatesList = await db.select().from(bankRates);
+        
+        const simulationResults = await Promise.all(bankRatesList.map(async (bank) => {
+            const rate = Number(bank.annualInterestRate);
+            const result = await simulate({ 
+                propertyValue: input.propertyValue,
+                downPayment: input.downPayment,
+                years: input.years,
+                bankId: bank.id, 
+            });
+            
+            return {
+                bankName: bank.bankName,
+                rate: rate,
+                maxYears: bank.maxYears,
+                result: result.system,
+            };
+        }));
+
+        const [lead] = await db.insert(leads).values({
+            name: input.clientName,
+            email: input.clientEmail,
+            phone: input.clientPhone,
+            source: 'simulador_imobiliario',
+            qualification: 'morno',
+            notes: `Simulação de financiamento iniciada para imóvel de R$ ${input.propertyValue} em ${input.years} anos.`,
+            budgetMax: String(input.propertyValue * 100),
+        }).returning();
+
+        return { success: true, results: simulationResults, leadId: lead.id };
+    }),
+
+    getRates: publicProcedure.query(async () => {
+        return await db.select().from(bankRates);
+    }),
+  }),
+  
+  // --- BLOG ---
   blog: router({
     list: adminProcedure.query(async () => await db.select().from(blogPosts)),
     published: publicProcedure.query(async () => await db.select().from(blogPosts).where(eq(blogPosts.published, true))),
@@ -199,10 +257,6 @@ export const appRouter = router({
   analytics: router({
     getMetrics: publicProcedure.query(async () => ({ totalEvents: 0, eventsByType: { property_view: 0, contact_form: 0, whatsapp_click: 0 }, eventsBySource: { google: 0, direct: 0 }})),
     listCampaigns: publicProcedure.query(async () => []),
-  }),
-
-  financial: router({
-    getSummary: publicProcedure.query(async () => ({ totalRevenue: 0, totalCommissions: 0, pendingCommissions: 0, netProfit: 0 })),
   }),
 
   integration: router({

@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   resetTokenExpires: timestamp("reset_token_expires"),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // --- IMOBILIÁRIA & CONTEÚDO (MANTIDO) ---
@@ -134,6 +135,14 @@ export const leads = pgTable("leads", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Tabela faltante (N8N Status)
+export const n8nStatusAtendimento = pgTable("n8n_status_atendimento", {
+  sessionId: text("session_id").primaryKey(),
+  status: text("status").notNull(),
+  ultimoContexto: jsonb("ultimo_contexto"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // --- ANALYTICS & FINTECH ---
 export const analyticsEvents = pgTable("analytics_events", {
   id: serial("id").primaryKey(),
@@ -167,7 +176,7 @@ export const financialMovements = pgTable("financial_movements", {
 export const bankRates = pgTable("bank_rates", {
   id: serial("id").primaryKey(),
   bankName: text("bank_name").notNull(),
-  interestRate: numeric("interest_rate", { precision: 5, scale: 2 }).notNull(),
+  annualInterestRate: numeric("annual_interest_rate", { precision: 5, scale: 2 }).notNull(), // FIX: Corrigido o nome do campo
   maxYears: integer("max_years").notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -208,3 +217,4 @@ export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
 export const blogCategoriesRelations = relations(blogCategories, ({ many }) => ({
   posts: many(blogPosts),
 }));
+
