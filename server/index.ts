@@ -10,7 +10,7 @@ import { authMiddleware } from "./_core/authMiddleware";
 dotenv.config();
 const app = express();
 
-// 1. CORS Corrigido (Restrito em produção)
+// 1. CORS Corrigido (Restrito em produção) - Fixes #9
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5000', 'https://app.casadf.com.br'],
   credentials: true,
@@ -21,7 +21,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 2. Middleware de Autenticação (VITAL para o tRPC context)
+// 2. Middleware de Autenticação (VITAL para o tRPC context) - Fixes #10
 app.use(authMiddleware);
 
 // Health check
@@ -35,7 +35,7 @@ app.use('/api/trpc', createExpressMiddleware({ router: appRouter, createContext 
 // Webhooks N8N
 app.use("/api/webhooks", n8nRouter);
 
-// 3. Error Handling Global
+// 3. Error Handling Global - Fixes #14
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('❌ Erro não tratado:', err);
   res.status(err.status || 500).json({
