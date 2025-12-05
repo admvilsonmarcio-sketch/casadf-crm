@@ -32,16 +32,36 @@ echo ""
 # PASSO 1: PARAR E REMOVER DOCKER
 # ============================================
 echo "🛑 [1/5] Parando todos os containers Docker..."
-docker stop $(docker ps -aq) 2>/dev/null || echo "  ℹ️  Nenhum container rodando"
+if [ -n "$(docker ps -aq)" ]; then
+    docker stop $(docker ps -aq) 2>/dev/null
+    echo "  ✅ Containers parados"
+else
+    echo "  ℹ️  Nenhum container rodando"
+fi
 
 echo "🗑️  Removendo todos os containers..."
-docker rm $(docker ps -aq) 2>/dev/null || echo "  ℹ️  Nenhum container para remover"
+if [ -n "$(docker ps -aq)" ]; then
+    docker rm $(docker ps -aq) 2>/dev/null
+    echo "  ✅ Containers removidos"
+else
+    echo "  ℹ️  Nenhum container para remover"
+fi
 
 echo "🗑️  Removendo todas as imagens..."
-docker rmi $(docker images -q) -f 2>/dev/null || echo "  ℹ️  Nenhuma imagem para remover"
+if [ -n "$(docker images -q)" ]; then
+    docker rmi $(docker images -q) -f 2>/dev/null
+    echo "  ✅ Imagens removidas"
+else
+    echo "  ℹ️  Nenhuma imagem para remover"
+fi
 
 echo "🗑️  Removendo todos os volumes (DADOS SERÃO PERDIDOS!)..."
-docker volume rm $(docker volume ls -q) 2>/dev/null || echo "  ℹ️  Nenhum volume para remover"
+if [ -n "$(docker volume ls -q)" ]; then
+    docker volume rm $(docker volume ls -q) 2>/dev/null
+    echo "  ✅ Volumes removidos"
+else
+    echo "  ℹ️  Nenhum volume para remover"
+fi
 
 echo "🗑️  Removendo todas as redes customizadas..."
 docker network prune -f 2>/dev/null || echo "  ℹ️  Nenhuma rede para remover"
