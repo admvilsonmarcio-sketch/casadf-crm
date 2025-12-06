@@ -117,9 +117,9 @@ if [ ! -f .env ]; then
     # Gerar senha forte para o banco
     DB_PASSWORD=$(openssl rand -base64 24 | tr -d "=+/" | cut -c1-20)
     
-    # Substituir valores no .env
-    sed -i "s/CHANGE_ME_STRONG_PASSWORD/${DB_PASSWORD}/g" .env
-    sed -i "s/CHANGE_ME_USE_OPENSSL_RAND_BASE64_32/${JWT_SECRET}/g" .env
+    # Substituir valores no .env (usando | como delimitador para evitar problemas com /)
+    sed -i "s|CHANGE_ME_STRONG_PASSWORD|${DB_PASSWORD}|g" .env
+    sed -i "s|CHANGE_ME_USE_OPENSSL_RAND_BASE64_32|${JWT_SECRET}|g" .env
     
     echo "  ✅ Arquivo .env criado com valores gerados automaticamente"
     echo ""
