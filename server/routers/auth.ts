@@ -1,7 +1,8 @@
-import { router, publicProcedure } from "../_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { db } from "../db";
 import { users } from "../../drizzle/schema";
+import jwt from "jsonwebtoken";
 import { eq, and } from "drizzle-orm";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
@@ -33,7 +34,22 @@ export const authRouter = router({
       }
 
       const { passwordHash, salt, resetToken, ...safeUser } = user;
-      return safeUser;
+      // Gerar token JWT com informações essenciais do usuário
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET não configurado.');
+      }
+      const token = jwt.sign(
+        {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+        secret,
+        { expiresIn: '7d' }
+      );
+      return { user: safeUser, token };
     }),
 
   register: publicProcedure
@@ -68,7 +84,22 @@ export const authRouter = router({
 
       console.log(`[AUTH] Novo usuário registrado: ${input.email}`);
       const { passwordHash: _, salt: __, ...safeUser } = newUser;
-      return safeUser;
+      // Gerar token para o usuário recém-criado
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET não configurado.');
+      }
+      const token = jwt.sign(
+        {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+        },
+        secret,
+        { expiresIn: '7d' }
+      );
+      return { user: safeUser, token };
     }),
 
   forgotPassword: publicProcedure
@@ -120,8 +151,11 @@ export const authRouter = router({
       return { success: true };
     }),
 
-  me: publicProcedure.query(async () => {
-    return { id: 1, name: "Visitante", email: "visitor@casadf.com", role: "guest" };
+  // Retorna os dados do usuário autenticado. Se não houver usuário no
+  // contexto, uma exceção é lançada pelo `protectedProcedure`.
+  me: protectedProcedure.query(async ({ ctx }) => {
+    // ctx.user é definido pelo authMiddleware ao validar o JWT
+    return ctx.user;
   }),
   
   logout: publicProcedure.mutation(async () => {
