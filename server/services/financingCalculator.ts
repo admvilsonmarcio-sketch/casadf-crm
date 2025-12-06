@@ -17,7 +17,8 @@ interface AmortizationResult {
     }
 }
 
-const format = (value: number) => Math.round(value);
+// Helper para formatar o valor (arredonda para o inteiro mais próximo em centavos)
+const formatToCents = (value: number) => Math.round(value);
 
 export async function simulate(input: SimulationInput): Promise<AmortizationResult> {
     const loanAmount = input.propertyValue - input.downPayment;
@@ -40,35 +41,48 @@ export async function simulate(input: SimulationInput): Promise<AmortizationResu
         throw new TRPCError({ code: 'NOT_FOUND', message: `Taxa bancária para o ID ${input.bankId} não encontrada.` });
     }
 
-    const annualRate = Number(bank.annualInterestRate) / 100; // Ex: 0.12 (12%)
-    const monthlyRate = Math.pow(1 + annualRate, 1 / 12) - 1; // Taxa mensal real
-    const i = monthlyRate;
+    // 1. Conversão da Taxa Anual Efetiva (string do DB) para Fator Mensal (float)
+    const annualRatePercent = parseFloat(bank.annualInterestRate);
+    if (isNaN(annualRatePercent)) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: `Taxa ${bank.annualInterestRate} do banco ${bank.bankName} é inválida.` });
+    }
 
-    // --- 1. CÁLCULO PRICE (Tabela Price) ---
-    const priceInstallment = loanAmount * (i * Math.pow(1 + i, months)) / (Math.pow(1 + i, months) - 1);
+    const annualEffectiveRate = annualRatePercent / 100; // Ex: 12.50% -> 0.125
+    
+    // Taxa Mensal Efetiva (MER)
+    // i_mensal = (1 + i_anual)^(1/12) - 1
+    const monthlyRateFactor = Math.pow(1 + annualEffectiveRate, 1 / 12) - 1;
+    const i = monthlyRateFactor;
+
+    // --- 2. CÁLCULO PRICE (Tabela Price) ---
+    // Parcela fixa: PMT = [Valor_Financiado * i] / [1 - (1 + i)^-meses]
+    const priceInstallment = loanAmount * (i / (1 - Math.pow(1 + i, -months)));
     const priceTotalPaid = priceInstallment * months;
 
-    // --- 2. CÁLCULO SAQUE (Sistema de Amortização Constante) ---
+    // --- 3. CÁLCULO SAC (Sistema de Amortização Constante) ---
     const amortization = loanAmount / months;
     
+    // 1ª Parcela: Amortização + Juros sobre o Saldo Devedor (Valor Financiado)
     const sacInterest1 = loanAmount * i;
     const sacFirstInstallment = amortization + sacInterest1;
 
+    // Última Parcela: Amortização + Juros sobre o Saldo Devedor (Amortização * i)
     const sacInterestLast = amortization * i;
     const sacLastInstallment = amortization + sacInterestLast;
 
+    // Total Pago: (1ª Parcela + Última Parcela) / 2 * Meses (decréscimo linear)
     const sacTotalPaid = (sacFirstInstallment + sacLastInstallment) / 2 * months; 
 
     return {
         system: {
             price: {
-                installment: format(priceInstallment),
-                totalPaid: format(priceTotalPaid),
+                installment: formatToCents(priceInstallment),
+                totalPaid: formatToCents(priceTotalPaid),
             },
             sac: {
-                firstInstallment: format(sacFirstInstallment),
-                lastInstallment: format(sacLastInstallment),
-                totalPaid: format(sacTotalPaid),
+                firstInstallment: formatToCents(sacFirstInstallment),
+                lastInstallment: formatToCents(sacLastInstallment),
+                totalPaid: formatToCents(sacTotalPaid),
             }
         }
     };
