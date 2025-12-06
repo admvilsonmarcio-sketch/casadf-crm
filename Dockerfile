@@ -8,8 +8,15 @@ WORKDIR /app
 # Copiar package files
 COPY package*.json ./
 
-# Instalar dependências
-RUN npm ci --only=production --ignore-scripts
+# Instalar todas as dependências (produção + desenvolvimento)
+# O Vite e o TSX estão em devDependencies e são necessários para o build.
+RUN npm ci --ignore-scripts
+
+# Corrigir incompatibilidades de esbuild. O esbuild instala um binário
+# específico para a plataforma e, ocasionalmente, sua versão de runtime
+# diverge da versão do pacote. O comando abaixo recompila o binário
+# alinhando as versões e evitando erros como "Host version does not match binary version".
+RUN npm rebuild esbuild
 
 # Copiar código fonte
 COPY . .
