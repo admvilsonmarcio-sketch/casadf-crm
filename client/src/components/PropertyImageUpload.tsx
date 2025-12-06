@@ -4,7 +4,6 @@ import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Upload, X, Star, Loader2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
-import { storagePut } from "../../../server/storage";
 
 interface PropertyImageUploadProps {
   propertyId: number;
@@ -18,8 +17,11 @@ export default function PropertyImageUpload({ propertyId, onUploadComplete }: Pr
 
   const utils = trpc.useUtils();
   const { data: images, isLoading } = trpc.propertyImages.list.useQuery({ propertyId });
+  
+  // A mutação de upload está preparada para receber a URL do S3/CDN (imageUrl)
   const uploadMutation = trpc.propertyImages.upload.useMutation({
     onSuccess: () => {
+      // O invalidate deve ser chamado após o upload (que acontece no backend)
       utils.propertyImages.list.invalidate({ propertyId });
       toast.success("Imagem enviada com sucesso!");
     },
@@ -55,39 +57,25 @@ export default function PropertyImageUpload({ propertyId, onUploadComplete }: Pr
       for (let i = 0; i < totalFiles; i++) {
         const file = files[i];
         
-        // Validar tipo de arquivo
+        // Validações
         if (!file.type.startsWith('image/')) {
           toast.error(`${file.name} não é uma imagem válida`);
           continue;
         }
-
-        // Validar tamanho (máximo 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error(`${file.name} é muito grande (máximo 5MB)`);
           continue;
         }
 
-        // Ler arquivo como buffer
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = new Uint8Array(arrayBuffer);
+        // 🚨 Ação Crítica: O upload real do S3/CDN deve ser implementado aqui (via Pre-Signed URL)
+        // O código a seguir SIMULA o fluxo PÓS-UPLOAD S3:
+        const fileKey = `properties/${propertyId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${file.name.split('.').pop()}`;
+        // Placeholder de URL - DEVE SER SUBSTITUÍDO PELA URL DO S3/CDN APÓS O UPLOAD REAL
+        const finalImageUrl = `https://seudominio-s3.com/bucket-name/${fileKey}`; 
 
-        // Gerar nome único para o arquivo
-        const timestamp = Date.now();
-        const randomSuffix = Math.random().toString(36).substring(7);
-        const extension = file.name.split('.').pop();
-        const fileKey = `properties/${propertyId}/${timestamp}-${randomSuffix}.${extension}`;
-
-        // Upload para S3 (precisa ser feito no servidor)
-        // Por enquanto, vamos simular com uma URL local
-        // Em produção, você faria o upload via um endpoint dedicado
-        
-        // Criar URL temporária para preview
-        const imageUrl = URL.createObjectURL(file);
-        
-        // Salvar no banco de dados
         await uploadMutation.mutateAsync({
           propertyId,
-          imageUrl: imageUrl, // Em produção, seria a URL do S3
+          imageUrl: finalImageUrl,
           imageKey: fileKey,
           isPrimary: images?.length === 0 && i === 0 ? 1 : 0,
           displayOrder: (images?.length || 0) + i,
@@ -99,9 +87,10 @@ export default function PropertyImageUpload({ propertyId, onUploadComplete }: Pr
       if (onUploadComplete) {
         onUploadComplete();
       }
+      toast.info("Atenção: A URL de imagem usada foi um placeholder. Implemente a lógica real de upload S3/CDN no backend.");
     } catch (error) {
       console.error("Erro no upload:", error);
-      toast.error("Erro ao fazer upload das imagens");
+      toast.error("Erro ao fazer upload das imagens - Verifique a implementação S3 no backend.");
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -155,7 +144,7 @@ export default function PropertyImageUpload({ propertyId, onUploadComplete }: Pr
             <p className="text-sm text-muted-foreground text-center">
               ou arraste e solte suas imagens aqui
               <br />
-              <span className="text-xs">PNG, JPG, WEBP até 5MB cada</span>
+              <span className="text-xs">PNG, JPG, WEBP até 5MB cada. **ATENÇÃO: A lógica REAL de upload S3 precisa ser implementada no backend.**</span>
             </p>
             {uploading && (
               <div className="w-full max-w-xs mt-4">
@@ -181,7 +170,7 @@ export default function PropertyImageUpload({ propertyId, onUploadComplete }: Pr
             <Card key={image.id} className="relative group overflow-hidden">
               <div className="aspect-square relative">
                 <img
-                  src={image.imageUrl}
+                  src={image.imageUrl} 
                   alt={image.caption || "Imagem do imóvel"}
                   className="w-full h-full object-cover"
                 />
