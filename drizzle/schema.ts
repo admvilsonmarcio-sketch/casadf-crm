@@ -45,7 +45,7 @@ export const properties = pgTable("properties", {
   price: numeric("price", { precision: 12, scale: 2 }).notNull(),
   salePrice: numeric("sale_price", { precision: 12, scale: 2 }),
   rentPrice: numeric("rent_price", { precision: 12, scale: 2 }),
-  type: varchar("type", { length: 50 }).notNull(),
+  propertyType: varchar("property_type", { length: 50 }).notNull(), // RENOMEADO: De 'type' para 'property_type'
   transactionType: varchar("transaction_type", { length: 50 }).default("venda"),
   status: varchar("status", { length: 50 }).default("disponivel"),
   features: jsonb("features"),
@@ -176,7 +176,7 @@ export const financialMovements = pgTable("financial_movements", {
 export const bankRates = pgTable("bank_rates", {
   id: serial("id").primaryKey(),
   bankName: text("bank_name").notNull(),
-  annualInterestRate: numeric("annual_interest_rate", { precision: 5, scale: 2 }).notNull(), // FIX: Corrigido o nome do campo
+  annualInterestRate: numeric("annual_interest_rate", { precision: 5, scale: 2 }).notNull(), 
   maxYears: integer("max_years").notNull(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -217,4 +217,3 @@ export const blogPostsRelations = relations(blogPosts, ({ one }) => ({
 export const blogCategoriesRelations = relations(blogCategories, ({ many }) => ({
   posts: many(blogPosts),
 }));
-
