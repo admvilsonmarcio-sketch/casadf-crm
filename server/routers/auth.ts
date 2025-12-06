@@ -2,13 +2,17 @@ import { router, publicProcedure, protectedProcedure } from "../_core/trpc";
 import { z } from "zod";
 import { db } from "../db";
 import { users } from "../../drizzle/schema";
-import jwt from "jsonwebtoken";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import jwt from "jsonwebtoken";
 
 const generateSalt = () => randomBytes(16).toString("hex");
 const hashPassword = (password: string, salt: string) => scryptSync(password, salt, 64).toString("hex");
 const generateToken = () => randomBytes(32).toString("hex");
+
+// Duração do token em segundos (1 dia)
+const TOKEN_EXPIRATION_SECONDS = 60 * 60 * 24;
+const TOKEN_EXPIRATION_MS = TOKEN_EXPIRATION_SECONDS * 1000;
 
 export const authRouter = router({
   login: publicProcedure
@@ -16,7 +20,7 @@ export const authRouter = router({
       email: z.string().email(),
       password: z.string(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const user = await db.query.users.findFirst({
         where: eq(users.email, input.email)
       });
@@ -29,27 +33,32 @@ export const authRouter = router({
       const originalHash = Buffer.from(user.passwordHash, 'hex');
       const verifyHash = Buffer.from(inputHash, 'hex');
 
+      // Comparação time-safe para prevenir ataques de tempo
       if (!timingSafeEqual(originalHash, verifyHash)) {
         throw new Error("Credenciais inválidas.");
       }
-
-      const { passwordHash, salt, resetToken, ...safeUser } = user;
-      // Gerar token JWT com informações essenciais do usuário
-      const secret = process.env.JWT_SECRET;
-      if (!secret) {
-        throw new Error('JWT_SECRET não configurado.');
+      
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+          throw new Error("Erro de servidor: JWT_SECRET não configurado.");
       }
-      const token = jwt.sign(
-        {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-        secret,
-        { expiresIn: '7d' }
-      );
-      return { user: safeUser, token };
+
+      // 1. Geração do Token JWT
+      const token = jwt.sign({ userId: user.id, role: user.role }, jwtSecret, { 
+        expiresIn: TOKEN_EXPIRATION_SECONDS 
+      });
+      
+      // 2. Criação do Cookie de Sessão (HttpOnly e Secure em produção)
+      ctx.res.cookie('__session', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: TOKEN_EXPIRATION_MS,
+      });
+
+      // Retorna objeto de usuário seguro, sem senha/salt
+      const { passwordHash, salt, resetToken, resetTokenExpires, ...safeUser } = user;
+      return safeUser;
     }),
 
   register: publicProcedure
@@ -60,7 +69,7 @@ export const authRouter = router({
       phone: z.string().optional(),
       role: z.enum(['cliente', 'corretor']).default('cliente')
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const existing = await db.query.users.findFirst({
         where: eq(users.email, input.email)
       });
@@ -81,25 +90,26 @@ export const authRouter = router({
         phone: input.phone,
         active: true
       }).returning();
+      
+      // Login automático após registro
+      const jwtSecret = process.env.JWT_SECRET;
+      if (jwtSecret) {
+          const token = jwt.sign({ userId: newUser.id, role: newUser.role }, jwtSecret, { 
+            expiresIn: TOKEN_EXPIRATION_SECONDS 
+          });
+          
+          ctx.res.cookie('__session', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: TOKEN_EXPIRATION_MS,
+          });
+      }
+
 
       console.log(`[AUTH] Novo usuário registrado: ${input.email}`);
-      const { passwordHash: _, salt: __, ...safeUser } = newUser;
-      // Gerar token para o usuário recém-criado
-      const secret = process.env.JWT_SECRET;
-      if (!secret) {
-        throw new Error('JWT_SECRET não configurado.');
-      }
-      const token = jwt.sign(
-        {
-          id: newUser.id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-        },
-        secret,
-        { expiresIn: '7d' }
-      );
-      return { user: safeUser, token };
+      const { passwordHash: _, salt: __, resetToken, resetTokenExpires, ...safeUser } = newUser;
+      return safeUser;
     }),
 
   forgotPassword: publicProcedure
@@ -151,14 +161,12 @@ export const authRouter = router({
       return { success: true };
     }),
 
-  // Retorna os dados do usuário autenticado. Se não houver usuário no
-  // contexto, uma exceção é lançada pelo `protectedProcedure`.
-  me: protectedProcedure.query(async ({ ctx }) => {
-    // ctx.user é definido pelo authMiddleware ao validar o JWT
-    return ctx.user;
+  me: protectedProcedure.query(async ({ ctx }) => { // ATUALIZADO para protectedProcedure
+    return ctx.user; 
   }),
   
-  logout: publicProcedure.mutation(async () => {
+  logout: publicProcedure.mutation(async ({ ctx }) => {
+    ctx.res.clearCookie('__session');
     return { success: true };
   })
 });
