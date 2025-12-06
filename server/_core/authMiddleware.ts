@@ -1,40 +1,36 @@
 import { Request, Response, NextFunction } from "express";
-import { db } from "../db";
-import { users } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import jwt from "jsonwebtoken";
 
-// MOCK SEGURO: Apenas para demonstrar a estrutura. 
-// A lógica REAL de validação de JWT/Cookie deve ser adicionada aqui.
+/**
+ * Middleware de autenticação baseado em JWT.
+ *
+ * Este middleware lê o cabeçalho `Authorization` no formato
+ * `Bearer <token>` e tenta verificar o token usando a chave
+ * secreta definida em `process.env.JWT_SECRET`. Se o token for
+ * válido, o payload decodificado é atribuído a `req.user` e fica
+ * disponível para o restante da aplicação. Caso contrário, o
+ * usuário será considerado anônimo e as rotas protegidas irão
+ * rejeitá-lo via `protectedProcedure`.
+ */
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers["authorization"] as string | undefined;
+    const tokenPrefix = "Bearer ";
+    // Valor padrão de usuário anônimo
+    (req as any).user = null;
 
-export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    // 1. Tentar obter o token de autenticação (ex: de um cookie de sessão)
-    // const token = req.cookies['__session']; // Exemplo de cookie
-    
-    // ATENÇÃO CRÍTICA: ESTA É A IMPLEMENTAÇÃO REAL QUE FALTA
-    // if (token) {
-    //     try {
-    //         const payload = verify(token, process.env.JWT_SECRET);
-    //         const user = await db.query.users.findFirst({ where: eq(users.id, payload.userId) });
-    //         if (user) {
-    //             (req as any).user = { id: user.id, name: user.name, email: user.email, role: user.role };
-    //         }
-    //     } catch (err) {
-    //         // Token inválido/expirado. A requisição continua, mas sem usuário autenticado.
-    //     }
-    // }
-
-    // DEBUG/TESTE: Mantenha o mock SOMENTE se for estritamente necessário para testar localmente
-    // EM PRODUÇÃO: REMOVA O BLOCO ABAIXO.
-    if (process.env.NODE_ENV === 'development') {
-        (req as any).user = { 
-            id: 1, 
-            name: 'Dev Admin',
-            email: 'admin@local.dev',
-            role: 'admin'
-        };
-    } else {
-        (req as any).user = null; // Em produção, se não houver token válido, o usuário é nulo.
+    if (authHeader && authHeader.startsWith(tokenPrefix)) {
+        const token = authHeader.slice(tokenPrefix.length).trim();
+        try {
+            const secret = process.env.JWT_SECRET;
+            if (!secret) {
+                throw new Error("JWT_SECRET não definido nas variáveis de ambiente");
+            }
+            const decoded = jwt.verify(token, secret);
+            (req as any).user = decoded;
+        } catch (err) {
+            // Se o token for inválido ou expirado, mantém usuário como null
+            console.warn('Token JWT inválido:', err);
+        }
     }
-    
     next();
 };
