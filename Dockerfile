@@ -8,15 +8,8 @@ WORKDIR /app
 # Copiar package files
 COPY package*.json ./
 
-# Instalar todas as dependências (produção + desenvolvimento)
-# O Vite e o TSX estão em devDependencies e são necessários para o build.
+# Instalar TODAS as dependências (necessário para o 'build' que usa devDependencies como vite)
 RUN npm ci --ignore-scripts
-
-# Corrigir incompatibilidades de esbuild. O esbuild instala um binário
-# específico para a plataforma e, ocasionalmente, sua versão de runtime
-# diverge da versão do pacote. O comando abaixo recompila o binário
-# alinhando as versões e evitando erros como "Host version does not match binary version".
-RUN npm rebuild esbuild
 
 # Copiar código fonte
 COPY . .
@@ -31,9 +24,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copiar apenas o necessário do builder
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+# Instalar apenas dependências de produção para a imagem final
+COPY package*.json ./
+RUN npm ci --only=production --ignore-scripts
+
+# Copiar artefatos do build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/server ./server
 COPY --from=builder /app/drizzle ./drizzle
