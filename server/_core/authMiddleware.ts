@@ -1,36 +1,67 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import { db } from "../db";
+import { users } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
+import jwt, { JwtPayload } from "jsonwebtoken";
 
-/**
- * Middleware de autenticação baseado em JWT.
- *
- * Este middleware lê o cabeçalho `Authorization` no formato
- * `Bearer <token>` e tenta verificar o token usando a chave
- * secreta definida em `process.env.JWT_SECRET`. Se o token for
- * válido, o payload decodificado é atribuído a `req.user` e fica
- * disponível para o restante da aplicação. Caso contrário, o
- * usuário será considerado anônimo e as rotas protegidas irão
- * rejeitá-lo via `protectedProcedure`.
- */
-export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers["authorization"] as string | undefined;
-    const tokenPrefix = "Bearer ";
-    // Valor padrão de usuário anônimo
-    (req as any).user = null;
+// Define a interface para o payload do JWT (user/role são campos do nosso User)
+interface AuthPayload extends JwtPayload {
+  userId: number;
+  role: 'admin' | 'corretor' | 'cliente' | 'guest';
+}
 
-    if (authHeader && authHeader.startsWith(tokenPrefix)) {
-        const token = authHeader.slice(tokenPrefix.length).trim();
-        try {
-            const secret = process.env.JWT_SECRET;
-            if (!secret) {
-                throw new Error("JWT_SECRET não definido nas variáveis de ambiente");
-            }
-            const decoded = jwt.verify(token, secret);
-            (req as any).user = decoded;
-        } catch (err) {
-            // Se o token for inválido ou expirado, mantém usuário como null
-            console.warn('Token JWT inválido:', err);
-        }
+export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+    const token = req.cookies['__session']; // Obtém o token do cookie
+    const jwtSecret = process.env.JWT_SECRET;
+    
+    if (!jwtSecret) {
+        console.error("ERRO CRÍTICO: JWT_SECRET não está definido.");
+        (req as any).user = null;
+        return next();
     }
+
+    if (token) {
+        try {
+            // Verifica e decodifica o token
+            const payload = jwt.verify(token, jwtSecret) as AuthPayload;
+            
+            // Busca o usuário no banco de dados para injetar no contexto
+            // Garante que o usuário ainda existe e está ativo
+            const user = await db.query.users.findFirst({
+                where: eq(users.id, payload.userId),
+                columns: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                }
+            });
+
+            if (user) {
+                // Injeta o objeto de usuário (sem dados sensíveis) na requisição
+                (req as any).user = user;
+            } else {
+                res.clearCookie('__session'); // Limpa cookie se usuário não for encontrado
+                (req as any).user = null;
+            }
+        } catch (err) {
+            // Token inválido/expirado (JsonWebTokenError, TokenExpiredError)
+            res.clearCookie('__session'); // Limpa cookie inválido
+            (req as any).user = null;
+        }
+    } else if (process.env.NODE_ENV === 'development') {
+        // MOCK DE ADMIN PARA DEV - Útil para desenvolvimento local sem login
+        // Será removido em ambiente de produção (NODE_ENV=production)
+        (req as any).user = { 
+            id: 1, 
+            name: 'Dev Admin (MOCK)',
+            email: 'admin@local.dev',
+            role: 'admin'
+        };
+    } else {
+        // Em produção, se não houver token válido, o usuário é nulo.
+        (req as any).user = null;
+    }
+    
     next();
 };
